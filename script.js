@@ -1,4 +1,3 @@
-
 // Banco de palabras por idioma y dificultad
 const WORDS = {
   es: {
@@ -50,29 +49,24 @@ const WORDS = {
 };
 
 // ============================================================
-// TURBO TYPE – Game Logic
+// TYPERACE – Game Logic
 // ============================================================
 
-// ---- STATE ----
-let gameState = {
-  mode: 'solo',       // 'solo' | 'multi-local'
-  lang: 'es',
-  diff: 'easy',
-  players: [],
-  raceStarted: false,
-  raceFinished: false,
-  startTime: null,
-  timerInterval: null,
-  localPlayerCount: 2,
-  localPlayerNames: []
-};
-
 // ---- CAR CONFIGS ----
-const CAR_COLORS = [
-  { name: 'Azul',     body: '#3B82F6', roof: '#1D4ED8', accent: '#93C5FD', emoji: '🔵' },
-  { name: 'Rojo',     body: '#EF4444', roof: '#B91C1C', accent: '#FCA5A5', emoji: '🔴' },
-  { name: 'Amarillo', body: '#FBBF24', roof: '#D97706', accent: '#FDE68A', emoji: '🟡' },
-  { name: 'Verde',    body: '#22C55E', roof: '#15803D', accent: '#86EFAC', emoji: '🟢' }
+// hasImage = true → use img tag with src path
+// hasImage = false → use inline SVG
+const CAR_CONFIGS = [
+  { id: 'amarillo', name: 'Amarillo', hasImage: true,  src: 'img/carros/carro_amarillo.png', color: { body: '#FBBF24', roof: '#D97706', accent: '#FDE68A' } },
+  { id: 'azul',     name: 'Azul',     hasImage: true,  src: 'img/carros/carro_azul.png',     color: { body: '#3B82F6', roof: '#1D4ED8', accent: '#93C5FD' } },
+  { id: 'rojo',     name: 'Rojo',     hasImage: true,  src: 'img/carros/carro_rojo.png',     color: { body: '#EF4444', roof: '#B91C1C', accent: '#FCA5A5' } },
+  { id: 'verde',    name: 'Verde',    hasImage: false, src: null,                             color: { body: '#22C55E', roof: '#15803D', accent: '#86EFAC' } },
+];
+
+// Bot colors (just uses the color data, no image needed for bots)
+const BOT_COLORS = [
+  { body: '#3B82F6', roof: '#1D4ED8', accent: '#93C5FD' },
+  { body: '#EF4444', roof: '#B91C1C', accent: '#FCA5A5' },
+  { body: '#22C55E', roof: '#15803D', accent: '#86EFAC' },
 ];
 
 const BOT_SPEEDS = {
@@ -81,11 +75,35 @@ const BOT_SPEEDS = {
   hard:   { min: 5.5, max: 7.5, errorRate: 0.02 }
 };
 
+// ---- TRACK CONFIG ----
+// How many intermediate tiles between start and finish
+// Each tile represents pista_intermedio.png
+const TRACK_TILES = 6;         // <-- change this to make the track longer/shorter
+const TILE_WIDTH_PX = 820;     // natural width of the track images
+const TILE_HEIGHT_PX = 160;    // natural height of the track images
+
+// ---- STATE ----
+let gameState = {
+  mode: 'solo',
+  lang: 'es',
+  diff: 'easy',
+  players: [],
+  raceStarted: false,
+  raceFinished: false,
+  startTime: null,
+  timerInterval: null,
+  localPlayerCount: 2,
+  localPlayerNames: [],
+  selectedCarId: null,
+  trackPixelLength: 0,   // total width of the scrollable track in px
+};
+
 // ---- SCREEN MANAGEMENT ----
 function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + name).classList.add('active');
   if (name === 'menu') generateStars('bg-stars');
+  if (name === 'car-select') { generateStars('bg-stars-cars'); buildCarSelectScreen(); }
   if (name === 'lobby') { generateStars('bg-stars2'); setupLobby(); }
 }
 
@@ -117,6 +135,61 @@ document.querySelectorAll('.diff-btn').forEach(btn => {
   });
 });
 
+// ---- CAR SELECT SCREEN ----
+function goToCarSelect() {
+  const nameInput = document.getElementById('player-name');
+  gameState.localPlayerNames = [nameInput ? nameInput.value.trim() || 'Tú' : 'Tú'];
+  showScreen('car-select');
+}
+
+function buildCarSelectScreen() {
+  const grid = document.getElementById('car-grid');
+  grid.innerHTML = '';
+
+  CAR_CONFIGS.forEach(car => {
+    const card = document.createElement('div');
+    card.className = 'car-card' + (gameState.selectedCarId === car.id ? ' selected' : '');
+    card.dataset.carId = car.id;
+    card.onclick = () => selectCar(car.id);
+
+    const visual = car.hasImage
+      ? `<img class="car-card-img" src="${car.src}" alt="${car.name}">`
+      : `<div class="car-card-svg">${drawCarSVG(car.color, 70)}</div>`;
+
+    card.innerHTML = `
+      ${visual}
+      <div class="car-card-name">${car.name}</div>
+      <div class="car-card-tag">${car.id === gameState.selectedCarId ? 'SELECCIONADO' : 'Seleccionar'}</div>
+    `;
+    grid.appendChild(card);
+  });
+
+  updateCarSelectBtn();
+}
+
+function selectCar(carId) {
+  gameState.selectedCarId = carId;
+  // Update cards
+  document.querySelectorAll('.car-card').forEach(card => {
+    const isSelected = card.dataset.carId === carId;
+    card.classList.toggle('selected', isSelected);
+    const tag = card.querySelector('.car-card-tag');
+    if (tag) tag.textContent = isSelected ? 'SELECCIONADO' : 'Seleccionar';
+  });
+  updateCarSelectBtn();
+}
+
+function updateCarSelectBtn() {
+  const btn = document.getElementById('btn-start-race');
+  if (btn) btn.disabled = !gameState.selectedCarId;
+}
+
+function startSoloWithCar() {
+  if (!gameState.selectedCarId) return;
+  gameState.mode = 'solo';
+  initRace('solo');
+}
+
 // ---- LOBBY ----
 function showMultiLocal() {
   gameState.mode = 'multi-local';
@@ -128,10 +201,11 @@ function setupLobby() {
   const container = document.getElementById('local-name-inputs');
   container.innerHTML = '';
   for (let i = 0; i < count; i++) {
+    const c = BOT_COLORS[i] || { body: '#94A3B8' };
     const wrap = document.createElement('div');
     wrap.className = 'local-name-row';
     wrap.innerHTML = `
-      <span class="car-dot" style="background:${CAR_COLORS[i].body}"></span>
+      <span class="car-dot" style="background:${c.body}"></span>
       <input type="text" class="name-input small" placeholder="Jugador ${i+1}" maxlength="12" value="${gameState.localPlayerNames[i]||''}">
     `;
     container.appendChild(wrap);
@@ -143,11 +217,12 @@ function renderLobbyPlayers() {
   const container = document.getElementById('lobby-players');
   container.innerHTML = '';
   for (let i = 0; i < gameState.localPlayerCount; i++) {
+    const c = BOT_COLORS[i] || { body: '#94A3B8', roof: '#64748B', accent: '#CBD5E1' };
     const card = document.createElement('div');
     card.className = 'lobby-player-card';
     card.innerHTML = `
-      <div class="lobby-car-preview">${drawCarSVG(CAR_COLORS[i], 60)}</div>
-      <div class="lobby-player-name">${CAR_COLORS[i].name}</div>
+      <div class="lobby-car-preview">${drawCarSVG(c, 60)}</div>
+      <div class="lobby-player-name">${c.body}</div>
     `;
     container.appendChild(card);
   }
@@ -168,40 +243,39 @@ function startMultiLocal() {
   inputs.forEach((inp, i) => {
     gameState.localPlayerNames.push(inp.value.trim() || `Jugador ${i+1}`);
   });
+  // For multi-local, no car select yet — just use SVG colors
+  gameState.selectedCarId = null;
   initRace('multi-local');
 }
 
 // ---- INIT RACE ----
-function startSolo() {
-  const nameInput = document.getElementById('player-name');
-  const pName = nameInput ? nameInput.value.trim() : '';
-  gameState.mode = 'solo';
-  gameState.localPlayerNames = [pName || 'Tú'];
-  initRace('solo');
-}
-
 function initRace(mode) {
   gameState.mode = mode;
   gameState.raceStarted = false;
   gameState.raceFinished = false;
   gameState.players = [];
+  finishRank = 0;
 
   const wordPool = getWordPool();
 
   if (mode === 'solo') {
-    // Player 0 = human
-    gameState.players.push(createHumanPlayer(gameState.localPlayerNames[0] || 'Tú', 0, wordPool));
-    // 3 bots
+    // Player 0 = human with chosen car
+    const chosenCar = CAR_CONFIGS.find(c => c.id === gameState.selectedCarId) || CAR_CONFIGS[0];
+    gameState.players.push(createHumanPlayer(gameState.localPlayerNames[0] || 'Tú', 0, wordPool, chosenCar));
+
+    // 3 bots — each gets a different color, avoid chosen car color if possible
+    const botCarConfigs = CAR_CONFIGS.filter(c => c.id !== gameState.selectedCarId);
+    const botNames = ['🤖 Bot Fácil', '🤖 Bot Medio', '🤖 Bot Difícil'];
     const botDiffs = ['easy', 'medium', 'hard'];
-    const botNames = ['🤖 Bot Easy', '🤖 Bot Med', '🤖 Bot Hard'];
-    for (let i = 1; i <= 3; i++) {
-      gameState.players.push(createBotPlayer(botNames[i-1], i, botDiffs[i-1], wordPool));
+    for (let i = 0; i < 3; i++) {
+      const botCar = botCarConfigs[i] || CAR_CONFIGS[(i + 1) % CAR_CONFIGS.length];
+      gameState.players.push(createBotPlayer(botNames[i], i + 1, botDiffs[i], wordPool, botCar));
     }
   } else {
-    // Multi local: all humans with different keyboards
-    const keyMaps = getKeyMaps(gameState.localPlayerCount);
+    // Multi local: all humans
     for (let i = 0; i < gameState.localPlayerCount; i++) {
-      gameState.players.push(createHumanPlayer(gameState.localPlayerNames[i] || `P${i+1}`, i, wordPool, keyMaps[i]));
+      const car = CAR_CONFIGS[i % CAR_CONFIGS.length];
+      gameState.players.push(createHumanPlayer(gameState.localPlayerNames[i] || `P${i+1}`, i, wordPool, car));
     }
   }
 
@@ -216,21 +290,15 @@ function getWordPool() {
   return pool;
 }
 
-function getKeyMaps(count) {
-  // Each player gets assigned a specific trigger key to focus their input
-  // In multi-local, each player has their own input field
-  return Array.from({length: count}, (_, i) => i);
-}
-
 // ---- PLAYER FACTORIES ----
-function createHumanPlayer(name, idx, wordPool, slot = 0) {
+function createHumanPlayer(name, idx, wordPool, carConfig) {
   return {
     id: idx,
     name,
     isBot: false,
-    color: CAR_COLORS[idx],
-    progress: 0,       // 0-1
-    position: 0,       // px from left
+    carConfig,
+    color: carConfig.color,
+    progress: 0,
     wordPool: [...wordPool],
     currentWordIdx: 0,
     currentLetterIdx: 0,
@@ -240,17 +308,14 @@ function createHumanPlayer(name, idx, wordPool, slot = 0) {
     finished: false,
     finishTime: null,
     finalRank: null,
-    slot,
-    keyInput: null,     // assigned after DOM build
-    displayEl: null,
+    keyInput: null,
     carEl: null,
     progressBarEl: null,
     shakeTimeout: null,
-    wordEl: null
   };
 }
 
-function createBotPlayer(name, idx, diff, wordPool) {
+function createBotPlayer(name, idx, diff, wordPool, carConfig) {
   const sp = BOT_SPEEDS[diff];
   const speed = sp.min + Math.random() * (sp.max - sp.min);
   return {
@@ -261,9 +326,9 @@ function createBotPlayer(name, idx, diff, wordPool) {
     botSpeed: speed,
     botErrorRate: sp.errorRate,
     botNextTick: 0,
-    color: CAR_COLORS[idx],
+    carConfig,
+    color: carConfig.color,
     progress: 0,
-    position: 0,
     wordPool: [...wordPool],
     currentWordIdx: 0,
     currentLetterIdx: 0,
@@ -274,17 +339,18 @@ function createBotPlayer(name, idx, diff, wordPool) {
     finishTime: null,
     finalRank: null,
     carEl: null,
-    progressBarEl: null
+    progressBarEl: null,
+    shakeTimeout: null,
   };
 }
 
 // ---- BUILD RACE SCREEN ----
 const ADVANCE = 8;
 const RETREAT = 3;
-const TRACK_LENGTH = 800; // px logical
+const TRACK_LENGTH = 1000; // logical units (progress 0→1 maps to this)
 
 function buildRaceScreen() {
-  // Progress bars
+  // -- Progress bars (HUD) --
   const pbContainer = document.getElementById('progress-bars');
   pbContainer.innerHTML = '';
   gameState.players.forEach(p => {
@@ -299,38 +365,80 @@ function buildRaceScreen() {
     p.progressBarEl = document.getElementById('pb-' + p.id);
   });
 
-  // Cars on track
-  const carsContainer = document.getElementById('cars-container');
-  carsContainer.innerHTML = '';
+  // -- Build scrollable track --
+  const trackScroll = document.getElementById('track-scroll');
+  trackScroll.innerHTML = '';
+
+  // Total tiles: 1 start + TRACK_TILES mid + 1 end
+  const totalTiles = 1 + TRACK_TILES + 1;
+  gameState.trackPixelLength = totalTiles * TILE_WIDTH_PX;
+
+  // Start tile
+  const startTile = document.createElement('div');
+  startTile.className = 'track-tile tile-start';
+  startTile.style.width = TILE_WIDTH_PX + 'px';
+  trackScroll.appendChild(startTile);
+
+  // Mid tiles
+  for (let i = 0; i < TRACK_TILES; i++) {
+    const midTile = document.createElement('div');
+    midTile.className = 'track-tile tile-mid';
+    midTile.style.width = TILE_WIDTH_PX + 'px';
+    trackScroll.appendChild(midTile);
+  }
+
+  // End tile
+  const endTile = document.createElement('div');
+  endTile.className = 'track-tile tile-end';
+  endTile.style.width = TILE_WIDTH_PX + 'px';
+  trackScroll.appendChild(endTile);
+
+  // -- Cars layer (fixed on screen, positioned by JS) --
+  let carsLayer = document.getElementById('cars-layer');
+  if (!carsLayer) {
+    carsLayer = document.createElement('div');
+    carsLayer.id = 'cars-layer';
+    carsLayer.className = 'cars-layer';
+    document.querySelector('.track-wrapper').appendChild(carsLayer);
+  }
+  carsLayer.innerHTML = '';
+
+  const numPlayers = gameState.players.length;
   gameState.players.forEach((p, i) => {
     const lane = document.createElement('div');
     lane.className = 'car-lane';
-    lane.style.top = `${i * 25}%`;
-    lane.innerHTML = drawCarSVG(p.color, 52);
     lane.id = 'car-' + p.id;
-    carsContainer.appendChild(lane);
+    // Divide track height evenly per lane
+    const laneH = 100 / numPlayers;
+    lane.style.top = `${i * laneH}%`;
+    lane.style.height = `${laneH}%`;
+
+    // Use image if available, else SVG
+    if (p.carConfig && p.carConfig.hasImage) {
+      lane.innerHTML = `<img src="${p.carConfig.src}" alt="${p.carConfig.name}" width="52">`;
+    } else {
+      lane.innerHTML = drawCarSVG(p.color, 52);
+    }
+
+    carsLayer.appendChild(lane);
     p.carEl = lane;
   });
 
-  // Typing zones
+  // -- Typing zones --
   const typingZone = document.getElementById('typing-zone');
   const otherPlayersWords = document.getElementById('other-players-words');
-
-  // Human players
   const humanPlayers = gameState.players.filter(p => !p.isBot);
 
   if (gameState.mode === 'solo') {
-    const p = humanPlayers[0];
     document.getElementById('current-word-display').innerHTML = '';
     document.getElementById('typing-input').value = '';
     document.getElementById('typing-input').disabled = false;
     document.getElementById('word-count').textContent = '0';
-    p.keyInput = document.getElementById('typing-input');
+    humanPlayers[0].keyInput = document.getElementById('typing-input');
     otherPlayersWords.innerHTML = '';
     otherPlayersWords.style.display = 'none';
-    typingZone.querySelector('.typing-inner').style.display = 'block';
+    typingZone.querySelector('.typing-inner').style.display = 'flex';
   } else {
-    // Multi-local: build one input per human player
     typingZone.querySelector('.typing-inner').style.display = 'none';
     otherPlayersWords.style.display = 'flex';
     otherPlayersWords.innerHTML = '';
@@ -352,16 +460,15 @@ function buildRaceScreen() {
 
 // ---- COUNTDOWN ----
 function startCountdown() {
-  const road = document.getElementById('road');
+  const wrapper = document.querySelector('.track-wrapper');
   let count = 3;
 
   const overlay = document.createElement('div');
   overlay.className = 'countdown-overlay';
   overlay.id = 'countdown-overlay';
   overlay.textContent = count;
-  road.appendChild(overlay);
+  wrapper.appendChild(overlay);
 
-  // Disable inputs
   gameState.players.filter(p => !p.isBot).forEach(p => {
     if (p.keyInput) p.keyInput.disabled = true;
   });
@@ -390,7 +497,6 @@ function beginRace() {
   gameState.raceStarted = true;
   gameState.startTime = Date.now();
 
-  // Setup first words for human players
   gameState.players.filter(p => !p.isBot).forEach(p => {
     renderWordForPlayer(p);
     if (p.keyInput) {
@@ -400,10 +506,8 @@ function beginRace() {
     }
   });
 
-  // Start timer
   gameState.timerInterval = setInterval(updateTimer, 1000);
-
-  // Start game loop for bots
+  lastTime = performance.now();
   requestAnimationFrame(gameLoop);
 }
 
@@ -415,7 +519,6 @@ function onTypingInput(e, player) {
   const typed = input.value;
   const word = player.wordPool[player.currentWordIdx];
 
-  // Check last typed char
   if (typed.length === 0) return;
 
   const lastChar = typed[typed.length - 1];
@@ -424,19 +527,16 @@ function onTypingInput(e, player) {
   player.totalLetters++;
 
   if (lastChar === expectedChar) {
-    // Correct!
     player.currentLetterIdx++;
     player.progress = Math.min(1, player.progress + ADVANCE / TRACK_LENGTH);
-    input.value = typed.slice(0, player.currentLetterIdx); // keep only correct chars
+    input.value = typed.slice(0, player.currentLetterIdx);
   } else {
-    // Error
     player.errors++;
     player.progress = Math.max(0, player.progress - RETREAT / TRACK_LENGTH);
     shakeCar(player);
-    input.value = typed.slice(0, player.currentLetterIdx); // reset to last correct
+    input.value = typed.slice(0, player.currentLetterIdx);
   }
 
-  // Word complete?
   if (player.currentLetterIdx >= word.length) {
     player.wordsCompleted++;
     player.currentWordIdx = (player.currentWordIdx + 1) % player.wordPool.length;
@@ -476,7 +576,7 @@ function renderWordForPlayer(player) {
   }
 }
 
-// ---- GAME LOOP (BOTS) ----
+// ---- GAME LOOP (BOTS + SCROLL) ----
 let lastTime = 0;
 function gameLoop(timestamp) {
   if (!gameState.raceStarted || gameState.raceFinished) return;
@@ -484,15 +584,14 @@ function gameLoop(timestamp) {
   const dt = timestamp - lastTime;
   lastTime = timestamp;
 
+  // Bots
   gameState.players.filter(p => p.isBot && !p.finished).forEach(bot => {
     bot.botNextTick -= dt;
     if (bot.botNextTick <= 0) {
       const word = bot.wordPool[bot.currentWordIdx];
       const variation = (Math.random() - 0.5) * 0.3;
-      const delay = 1000 / (bot.botSpeed + variation);
-      bot.botNextTick = delay;
+      bot.botNextTick = 1000 / (bot.botSpeed + variation);
 
-      // Simulate typing a letter
       const isError = Math.random() < bot.botErrorRate;
       if (isError) {
         bot.errors++;
@@ -503,7 +602,6 @@ function gameLoop(timestamp) {
         bot.currentLetterIdx++;
         bot.totalLetters++;
         bot.progress = Math.min(1, bot.progress + ADVANCE / TRACK_LENGTH);
-
         if (bot.currentLetterIdx >= word.length) {
           bot.wordsCompleted++;
           bot.currentWordIdx = (bot.currentWordIdx + 1) % bot.wordPool.length;
@@ -516,34 +614,64 @@ function gameLoop(timestamp) {
     }
   });
 
+  // Scroll track behind the player car (always centered on human player 0)
+  scrollTrackToPlayer();
   updatePositions();
   requestAnimationFrame(gameLoop);
 }
 
+// ---- TRACK SCROLL ----
+// The track scrolls so the human car appears at ~25% from the left edge
+const CAR_SCREEN_X_RATIO = 0.25;  // car appears at 25% of the track-wrapper width
+
+function scrollTrackToPlayer() {
+  const humanPlayer = gameState.players.find(p => !p.isBot);
+  if (!humanPlayer) return;
+
+  const wrapper = document.querySelector('.track-wrapper');
+  const wrapperW = wrapper ? wrapper.offsetWidth : window.innerWidth;
+
+  // Convert progress (0-1) to pixel position on the full track
+  const carTrackPx = humanPlayer.progress * gameState.trackPixelLength;
+
+  // The offset we need to shift the strip so car appears at CAR_SCREEN_X_RATIO
+  const targetOffsetX = carTrackPx - wrapperW * CAR_SCREEN_X_RATIO;
+  const clampedOffset = Math.max(0, Math.min(targetOffsetX, gameState.trackPixelLength - wrapperW));
+
+  const trackScroll = document.getElementById('track-scroll');
+  if (trackScroll) {
+    trackScroll.style.transform = `translateX(-${clampedOffset}px)`;
+  }
+
+  // All car elements are in the fixed carsLayer.
+  // Their left = their own track px position - current scroll offset
+  gameState.players.forEach(p => {
+    if (!p.carEl) return;
+    const pxOnTrack = p.progress * gameState.trackPixelLength;
+    const screenX = pxOnTrack - clampedOffset;
+    p.carEl.style.left = Math.round(screenX) + 'px';
+  });
+}
+
 // ---- CAR POSITION ----
 function updateCarPosition(player) {
-  if (!player.carEl) return;
-  const trackWidth = document.getElementById('road').offsetWidth - 80;
-  const px = player.progress * trackWidth;
-  player.carEl.style.left = px + 'px';
-
-  // Progress bar
+  // Progress bar update
   if (player.progressBarEl) {
     player.progressBarEl.style.width = (player.progress * 100) + '%';
     const pct = document.getElementById('pct-' + player.id);
     if (pct) pct.textContent = Math.round(player.progress * 100) + '%';
   }
 
-  // Speed flames
-  if (player.progress > 0.1) {
-    player.carEl.classList.add('fast');
+  // Speed flame
+  if (player.progress > 0.05) {
+    player.carEl && player.carEl.classList.add('fast');
   }
 }
 
 function shakeCar(player) {
   if (!player.carEl) return;
   player.carEl.classList.remove('shake');
-  void player.carEl.offsetWidth; // reflow
+  void player.carEl.offsetWidth;
   player.carEl.classList.add('shake');
   clearTimeout(player.shakeTimeout);
   player.shakeTimeout = setTimeout(() => player.carEl && player.carEl.classList.remove('shake'), 400);
@@ -552,7 +680,7 @@ function shakeCar(player) {
 // ---- HUD ----
 function updateHUD(player) {
   if (gameState.mode === 'solo' && player.id === 0) {
-    const elapsed = (Date.now() - gameState.startTime) / 60000; // minutes
+    const elapsed = (Date.now() - gameState.startTime) / 60000;
     const wpm = elapsed > 0 ? Math.round(player.wordsCompleted / elapsed) : 0;
     const acc = player.totalLetters > 0 ? Math.round(((player.totalLetters - player.errors) / player.totalLetters) * 100) : 100;
     document.getElementById('hud-wpm').textContent = wpm;
@@ -590,31 +718,24 @@ function checkFinish(player) {
   finishRank++;
   player.finalRank = finishRank;
 
-  // Flash effect
-  if (player.carEl) {
-    player.carEl.classList.add('finished');
-  }
+  if (player.carEl) player.carEl.classList.add('finished');
 
   const allFinished = gameState.players.every(p => p.finished);
   const humansDone = gameState.players.filter(p => !p.isBot).every(p => p.finished);
 
   if (allFinished || (humansDone && finishRank >= gameState.players.length - 1)) {
-    // End race after short delay
     setTimeout(endRace, 1500);
   }
 
-  // If first place, show celebration
-  if (finishRank === 1 && !player.isBot) {
-    showWinBanner();
-  }
+  if (finishRank === 1 && !player.isBot) showWinBanner();
 }
 
 function showWinBanner() {
-  const road = document.getElementById('road');
+  const wrapper = document.querySelector('.track-wrapper');
   const banner = document.createElement('div');
   banner.className = 'win-banner';
   banner.textContent = '🏆 ¡GANASTE!';
-  road.appendChild(banner);
+  wrapper.appendChild(banner);
   setTimeout(() => banner.remove(), 2000);
 }
 
@@ -623,7 +744,6 @@ function endRace() {
   gameState.raceFinished = true;
   clearInterval(gameState.timerInterval);
 
-  // Assign remaining ranks
   const unfinished = gameState.players.filter(p => !p.finished).sort((a, b) => b.progress - a.progress);
   unfinished.forEach(p => {
     finishRank++;
@@ -639,7 +759,6 @@ function showResults() {
   const sorted = [...gameState.players].sort((a, b) => a.finalRank - b.finalRank);
   const elapsed = (Date.now() - gameState.startTime - 800) / 60000;
 
-  // Podium
   const podium = document.getElementById('podium');
   podium.innerHTML = '';
   const medals = ['🥇', '🥈', '🥉', '4️⃣'];
@@ -650,8 +769,13 @@ function showResults() {
     block.className = 'podium-block';
     block.style.animationDelay = `${i * 0.2}s`;
     const wpm = elapsed > 0 ? Math.round(p.wordsCompleted / elapsed) : 0;
+
+    const carVisual = (p.carConfig && p.carConfig.hasImage)
+      ? `<img src="${p.carConfig.src}" width="44" alt="${p.carConfig.name}">`
+      : drawCarSVG(p.color, 44);
+
     block.innerHTML = `
-      <div class="podium-car">${drawCarSVG(p.color, 44)}</div>
+      <div class="podium-car">${carVisual}</div>
       <div class="podium-medal">${medals[i]}</div>
       <div class="podium-name">${p.name}</div>
       <div class="podium-bar" style="height:${heights[i]};background:${p.color.body}">
@@ -661,7 +785,6 @@ function showResults() {
     podium.appendChild(block);
   });
 
-  // Stats
   const statsGrid = document.getElementById('stats-grid');
   statsGrid.innerHTML = '';
   sorted.forEach(p => {
@@ -682,7 +805,6 @@ function showResults() {
 
   showScreen('results');
   launchConfetti();
-  finishRank = 0;
 }
 
 function formatTime(ms) {
@@ -723,40 +845,29 @@ function popWordEffect(player) {
   el.classList.add('word-pop');
 }
 
-// ---- CAR SVG ----
+// ---- CAR SVG (fallback for color-only cars) ----
 function drawCarSVG(color, size) {
   const w = size;
   const h = size * 1.7;
   return `<svg width="${w}" height="${h}" viewBox="0 0 40 68" xmlns="http://www.w3.org/2000/svg">
-    <!-- Body shadow -->
     <ellipse cx="20" cy="64" rx="16" ry="4" fill="rgba(0,0,0,0.25)"/>
-    <!-- Wheels -->
     <rect x="2" y="10" width="8" height="12" rx="3" fill="#1a1a2e"/>
     <rect x="30" y="10" width="8" height="12" rx="3" fill="#1a1a2e"/>
     <rect x="2" y="44" width="8" height="12" rx="3" fill="#1a1a2e"/>
     <rect x="30" y="44" width="8" height="12" rx="3" fill="#1a1a2e"/>
-    <!-- Wheel shine -->
     <rect x="4" y="12" width="4" height="4" rx="2" fill="#555"/>
     <rect x="32" y="12" width="4" height="4" rx="2" fill="#555"/>
     <rect x="4" y="46" width="4" height="4" rx="2" fill="#555"/>
     <rect x="32" y="46" width="4" height="4" rx="2" fill="#555"/>
-    <!-- Main body -->
     <rect x="8" y="6" width="24" height="56" rx="8" fill="${color.body}"/>
-    <!-- Roof / cabin -->
     <rect x="11" y="18" width="18" height="20" rx="5" fill="${color.roof}"/>
-    <!-- Windshield -->
     <rect x="13" y="19" width="14" height="10" rx="3" fill="#a8d8f0" opacity="0.9"/>
-    <!-- Rear window -->
     <rect x="13" y="32" width="14" height="6" rx="2" fill="#a8d8f0" opacity="0.7"/>
-    <!-- Front lights -->
     <rect x="10" y="7" width="6" height="4" rx="2" fill="#FEFCE8"/>
     <rect x="24" y="7" width="6" height="4" rx="2" fill="#FEFCE8"/>
-    <!-- Rear lights -->
     <rect x="10" y="56" width="6" height="4" rx="2" fill="#EF4444"/>
     <rect x="24" y="56" width="6" height="4" rx="2" fill="#EF4444"/>
-    <!-- Racing stripe -->
     <rect x="18" y="8" width="4" height="52" rx="2" fill="${color.accent}" opacity="0.5"/>
-    <!-- Hood ornament -->
     <circle cx="20" cy="10" r="2" fill="${color.accent}"/>
   </svg>`;
 }
@@ -773,10 +884,4 @@ function shuffle(arr) {
 // ---- INIT ----
 window.addEventListener('load', () => {
   generateStars('bg-stars');
-
-  const typingInput = document.getElementById('typing-input');
-
-  if (typingInput) {
-    typingInput.addEventListener('input', () => {});
-  }
 });

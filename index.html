@@ -6,7 +6,6 @@
 <title>TURBO TYPE – Carrera de Palabras</title>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">   
-
 </head>
 <body>
 
@@ -33,11 +32,25 @@
       </div>
     </div>
     <div class="menu-buttons">
-      <button class="btn btn-solo" onclick="startSolo()">🚗 Jugar Solo vs Bots</button>
+      <button class="btn btn-solo" onclick="goToCarSelect()">🚗 Jugar Solo vs Bots</button>
       <button class="btn btn-multi" onclick="showMultiLocal()">👥 Multijugador Local</button>
     </div>
     <div class="menu-footer">
       <p>Sé el más rápido escribiendo y cruza la meta primero</p>
+    </div>
+  </div>
+</div>
+
+<!-- PANTALLA: SELECCIÓN DE CARRO -->
+<div id="screen-car-select" class="screen">
+  <div class="bg-stars" id="bg-stars-cars"></div>
+  <div class="car-select-container">
+    <h2 class="car-select-title">🏎️ Elige tu Carro</h2>
+    <p class="car-select-sub">Selecciona tu vehículo para la carrera</p>
+    <div class="car-grid" id="car-grid"></div>
+    <div class="car-select-actions">
+      <button class="btn btn-start" id="btn-start-race" onclick="startSoloWithCar()" disabled>🏁 ¡A CORRER!</button>
+      <button class="btn btn-back" onclick="showScreen('menu')">← Volver</button>
     </div>
   </div>
 </div>
@@ -81,17 +94,8 @@
   </div>
 
   <div class="track-wrapper">
-    <div class="track" id="track">
-      <div class="grass left-grass"></div>
-      <div class="road" id="road">
-        <div class="lane-lines"></div>
-        <div class="start-line"></div>
-        <div class="finish-line">
-          <div class="checkered"></div>
-        </div>
-        <div class="cars-container" id="cars-container"></div>
-      </div>
-      <div class="grass right-grass"></div>
+    <div class="track-scroll" id="track-scroll">
+      <!-- Track tiles built by JS -->
     </div>
   </div>
 
@@ -116,13 +120,12 @@
     <div class="podium" id="podium"></div>
     <div class="stats-grid" id="stats-grid"></div>
     <div class="results-actions">
-      <button class="btn btn-solo" onclick="startSolo()">🔄 Jugar de Nuevo</button>
+      <button class="btn btn-solo" onclick="goToCarSelect()">🔄 Jugar de Nuevo</button>
       <button class="btn btn-back" onclick="showScreen('menu')">🏠 Menú Principal</button>
     </div>
   </div>
 </div>
 
+<script src="script.js"></script>
 </body>
 </html>
-
-<script src="script.js"></script>   
