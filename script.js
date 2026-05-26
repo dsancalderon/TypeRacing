@@ -59,7 +59,8 @@ const CAR_CONFIGS = [
   { id: 'amarillo', name: 'Amarillo', hasImage: true,  src: 'img/carros/carro_amarillo.png', color: { body: '#FBBF24', roof: '#D97706', accent: '#FDE68A' } },
   { id: 'azul',     name: 'Azul',     hasImage: true,  src: 'img/carros/carro_azul.png',     color: { body: '#3B82F6', roof: '#1D4ED8', accent: '#93C5FD' } },
   { id: 'rojo',     name: 'Rojo',     hasImage: true,  src: 'img/carros/carro_rojo.png',     color: { body: '#EF4444', roof: '#B91C1C', accent: '#FCA5A5' } },
-  { id: 'verde',    name: 'Verde',    hasImage: false, src: null,                             color: { body: '#22C55E', roof: '#15803D', accent: '#86EFAC' } },
+  { id: 'morado',   name: 'Morado',   hasImage: true,  src: 'img/carros/carro_morado.png',   color: { body: '#A855F7', roof: '#7E22CE', accent: '#EDE9FE' } },
+  { id: 'blanco',   name: 'Blanco',   hasImage: true,  src: 'img/carros/carro_blanco.png',   color: { body: '#F8FAFC', roof: '#E2E8F0', accent: '#CBD5E1' } },
 ];
 
 // Bot colors (just uses the color data, no image needed for bots)
