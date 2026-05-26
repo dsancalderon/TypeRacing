@@ -309,6 +309,7 @@ html, body {
   background: #1a2a1a;
   flex-direction: column;
   justify-content: flex-start;
+  align-items: stretch;
 }
 
 /* HUD */
@@ -336,6 +337,7 @@ html, body {
 /* ---- TRACK WRAPPER ---- */
 .track-wrapper {
   flex: 1;
+  width: 100%;
   overflow: hidden;
   position: relative;
   min-height: 0;

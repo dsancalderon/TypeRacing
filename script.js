@@ -400,7 +400,8 @@ function buildRaceScreen() {
     carsLayer = document.createElement('div');
     carsLayer.id = 'cars-layer';
     carsLayer.className = 'cars-layer';
-    document.querySelector('.track-wrapper').appendChild(carsLayer);
+    const wrapper = document.querySelector('.track-wrapper');
+    if (wrapper) wrapper.appendChild(carsLayer);
   }
   carsLayer.innerHTML = '';
 
@@ -424,6 +425,9 @@ function buildRaceScreen() {
     carsLayer.appendChild(lane);
     p.carEl = lane;
   });
+
+  // Position track and cars immediately
+  setTimeout(scrollTrackToPlayer, 0);
 
   // -- Typing zones --
   const typingZone = document.getElementById('typing-zone');
