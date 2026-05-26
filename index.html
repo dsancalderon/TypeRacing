@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TURBO TYPE – Carrera de Palabras</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">   
+
+</head>
+<body>
+
+<!-- PANTALLA: MENÚ PRINCIPAL -->
+<div id="screen-menu" class="screen active">
+  <div class="bg-stars" id="bg-stars"></div>
+  <div class="menu-container">
+    <div class="logo-wrap">
+      <div class="logo-car">🏎️</div>
+      <h1 class="logo-title">TYPE<span>RACING</span></h1>
+      <p class="logo-sub">¡La carrera de palabras más veloz!</p>
+    </div>
+    <div class="menu-form">
+      <input type="text" id="player-name" class="name-input" placeholder="Tu nombre de piloto..." maxlength="16" autocomplete="off">
+      <div class="lang-selector">
+        <button class="lang-btn active" data-lang="es">🇪🇸 Español</button>
+        <button class="lang-btn" data-lang="en">🇬🇧 English</button>
+      </div>
+      <div class="diff-selector">
+        <span class="diff-label">Dificultad:</span>
+        <button class="diff-btn active" data-diff="easy">Fácil</button>
+        <button class="diff-btn" data-diff="medium">Media</button>
+        <button class="diff-btn" data-diff="hard">Difícil</button>
+      </div>
+    </div>
+    <div class="menu-buttons">
+      <button class="btn btn-solo" onclick="startSolo()">🚗 Jugar Solo vs Bots</button>
+      <button class="btn btn-multi" onclick="showMultiLocal()">👥 Multijugador Local</button>
+    </div>
+    <div class="menu-footer">
+      <p>Sé el más rápido escribiendo y cruza la meta primero</p>
+    </div>
+  </div>
+</div>
+
+<!-- PANTALLA: LOBBY MULTIJUGADOR LOCAL -->
+<div id="screen-lobby" class="screen">
+  <div class="bg-stars" id="bg-stars2"></div>
+  <div class="lobby-container">
+    <h2 class="lobby-title">🏁 Sala de Carrera</h2>
+    <div class="lobby-players" id="lobby-players"></div>
+    <div class="lobby-actions">
+      <div class="player-count-select">
+        <label>Número de jugadores:</label>
+        <div class="count-btns">
+          <button class="count-btn active" data-count="2">2</button>
+          <button class="count-btn" data-count="3">3</button>
+          <button class="count-btn" data-count="4">4</button>
+        </div>
+      </div>
+      <div id="local-name-inputs" class="local-names"></div>
+      <button class="btn btn-start" onclick="startMultiLocal()">🏁 ¡INICIAR CARRERA!</button>
+      <button class="btn btn-back" onclick="showScreen('menu')">← Volver</button>
+    </div>
+  </div>
+</div>
+
+<!-- PANTALLA: CARRERA -->
+<div id="screen-race" class="screen">
+  <div class="race-hud">
+    <div class="hud-left">
+      <div class="hud-pos" id="hud-position">POS 1/4</div>
+      <div class="hud-timer" id="hud-timer">00:00</div>
+    </div>
+    <div class="hud-center">
+      <div class="progress-bars" id="progress-bars"></div>
+    </div>
+    <div class="hud-right">
+      <div class="hud-wpm">WPM: <span id="hud-wpm">0</span></div>
+      <div class="hud-acc">ACC: <span id="hud-acc">100</span>%</div>
+    </div>
+  </div>
+
+  <div class="track-wrapper">
+    <div class="track" id="track">
+      <div class="grass left-grass"></div>
+      <div class="road" id="road">
+        <div class="lane-lines"></div>
+        <div class="start-line"></div>
+        <div class="finish-line">
+          <div class="checkered"></div>
+        </div>
+        <div class="cars-container" id="cars-container"></div>
+      </div>
+      <div class="grass right-grass"></div>
+    </div>
+  </div>
+
+  <div class="typing-zone" id="typing-zone">
+    <div class="typing-inner">
+      <div class="current-word-display" id="current-word-display"></div>
+      <div class="typing-input-wrap">
+        <input type="text" id="typing-input" class="typing-input" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Escribe aquí...">
+      </div>
+      <div class="word-counter">Palabras: <span id="word-count">0</span></div>
+    </div>
+    <div class="other-players-words" id="other-players-words"></div>
+  </div>
+</div>
+
+<!-- PANTALLA: RESULTADOS -->
+<div id="screen-results" class="screen">
+  <div class="results-bg"></div>
+  <div class="confetti-container" id="confetti"></div>
+  <div class="results-container">
+    <h2 class="results-title">🏆 ¡CARRERA TERMINADA!</h2>
+    <div class="podium" id="podium"></div>
+    <div class="stats-grid" id="stats-grid"></div>
+    <div class="results-actions">
+      <button class="btn btn-solo" onclick="startSolo()">🔄 Jugar de Nuevo</button>
+      <button class="btn btn-back" onclick="showScreen('menu')">🏠 Menú Principal</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
+
+<script src="script.js"></script>   
