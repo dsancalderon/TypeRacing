@@ -300,6 +300,7 @@ function createHumanPlayer(name, idx, wordPool, carConfig) {
     carConfig,
     color: carConfig.color,
     progress: 0,
+    visualProgress: 0,
     wordPool: [...wordPool],
     currentWordIdx: 0,
     currentLetterIdx: 0,
@@ -330,6 +331,7 @@ function createBotPlayer(name, idx, diff, wordPool, carConfig) {
     carConfig,
     color: carConfig.color,
     progress: 0,
+    visualProgress: 0,
     wordPool: [...wordPool],
     currentWordIdx: 0,
     currentLetterIdx: 0,
@@ -589,6 +591,13 @@ function gameLoop(timestamp) {
   const dt = timestamp - lastTime;
   lastTime = timestamp;
 
+  // Human players (constant speed)
+  gameState.players.filter(p => !p.isBot && !p.finished).forEach(p => {
+    const HUMAN_SPEED = 35; // base speed units per second
+    p.progress = Math.min(1, p.progress + (HUMAN_SPEED / TRACK_LENGTH) * (dt / 1000));
+    checkFinish(p);
+  });
+
   // Bots
   gameState.players.filter(p => p.isBot && !p.finished).forEach(bot => {
     bot.botNextTick -= dt;
@@ -614,9 +623,15 @@ function gameLoop(timestamp) {
         }
       }
 
-      updateCarPosition(bot);
       checkFinish(bot);
     }
+  });
+
+  // Smooth visual progress interpolation for all players
+  gameState.players.forEach(p => {
+    if (p.visualProgress === undefined) p.visualProgress = p.progress;
+    p.visualProgress += (p.progress - p.visualProgress) * (1 - Math.exp(-dt * 0.015));
+    updateCarPosition(p);
   });
 
   // Scroll track behind the player car (always centered on human player 0)
@@ -637,7 +652,7 @@ function scrollTrackToPlayer() {
   const wrapperW = wrapper ? wrapper.offsetWidth : window.innerWidth;
 
   // Convert progress (0-1) to pixel position on the full track
-  const carTrackPx = humanPlayer.progress * gameState.trackPixelLength;
+  const carTrackPx = humanPlayer.visualProgress * gameState.trackPixelLength;
 
   // The offset we need to shift the strip so car appears at CAR_SCREEN_X_RATIO
   const targetOffsetX = carTrackPx - wrapperW * CAR_SCREEN_X_RATIO;
@@ -652,7 +667,7 @@ function scrollTrackToPlayer() {
   // Their left = their own track px position - current scroll offset
   gameState.players.forEach(p => {
     if (!p.carEl) return;
-    const pxOnTrack = p.progress * gameState.trackPixelLength;
+    const pxOnTrack = p.visualProgress * gameState.trackPixelLength;
     const screenX = pxOnTrack - clampedOffset;
     p.carEl.style.left = Math.round(screenX) + 'px';
   });
@@ -662,13 +677,13 @@ function scrollTrackToPlayer() {
 function updateCarPosition(player) {
   // Progress bar update
   if (player.progressBarEl) {
-    player.progressBarEl.style.width = (player.progress * 100) + '%';
+    player.progressBarEl.style.width = (player.visualProgress * 100) + '%';
     const pct = document.getElementById('pct-' + player.id);
-    if (pct) pct.textContent = Math.round(player.progress * 100) + '%';
+    if (pct) pct.textContent = Math.round(player.visualProgress * 100) + '%';
   }
 
   // Speed flame
-  if (player.progress > 0.05) {
+  if (player.visualProgress > 0.05) {
     player.carEl && player.carEl.classList.add('fast');
   }
 }
